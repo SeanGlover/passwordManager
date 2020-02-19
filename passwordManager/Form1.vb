@@ -41,7 +41,6 @@ Public Class Form1
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
 
         WindowState = FormWindowState.Maximized
-        Icon = My.Resources.Lock
 
         With TLP_AddTab
             .ColumnStyles.Add(New ColumnStyle With {.SizeType = SizeType.Absolute, .Width = 36})
