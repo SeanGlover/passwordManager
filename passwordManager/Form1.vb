@@ -37,9 +37,7 @@ Public Class Form1
     Private ReadOnly ControlsImages As New Dictionary(Of String, Image)(MyImages(Nothing))
     Friend ReadOnly NoImageString As String = ImageToBase64(My.Resources.NoImage)
     Private Categories As CategoryCollection
-    '.TransparencyKey = Color.WhiteSmoke,}
-    '.BackColor = Color.WhiteSmoke,
-    '.TransparencyKey = Color.WhiteSmoke,
+
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
 
         WindowState = FormWindowState.Maximized
