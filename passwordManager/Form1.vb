@@ -74,7 +74,7 @@ Public Class Form1
     Private Sub TabControl_AddTabClicked(sender As Object, e As TabsEventArgs) Handles TypeTabs.TabClicked
 
         If e.InZone = Tabs.Zone.Add Then
-            'Add new Category
+#Region " Add new Category "
             InvisibleForm.Controls.Clear()
             InvisibleForm.Controls.Add(TLP_AddTab)
             TLP_AddTab.Location = New Point(32, 32)
@@ -85,9 +85,10 @@ Public Class Form1
                 .BackgroundImage = FormBackImage(questionsRectangle.Size)
                 .Visible = True
             End With
+#End Region
 
         ElseIf e.InZone = Tabs.Zone.Close Then
-            'Drop existing Category
+#Region " Drop existing Category "
             Using message As New Prompt
                 If message.Show("Are you sure?", "Removing this category will remove all entries", Prompt.IconOption.YesNo) = DialogResult.Yes Then
                     Dim oldCategory As EntryCollection = Categories.Item(Trim(e.InTab.Text))
@@ -96,26 +97,53 @@ Public Class Form1
                     Categories.Save()
                 End If
             End Using
+#End Region
 
         ElseIf e.InZone = Tabs.Zone.Image Or e.InZone = Tabs.Zone.Text Then
             If Clipboard.ContainsImage Then
-                Dim clipImage As Image = Clipboard.GetImage()
-                Dim clickedCategory As EntryCollection = Categories.Item(Trim(e.InTab.Text))
-                clickedCategory.TabImageString = ImageToBase64(clipImage)
-                e.InTab.Image = clickedCategory.TabImage
-                Categories.Save()
+#Region " Add Tab Image - Don't change if already has ... change by emptying clipboard, clicking and adding image to clipboard ( avoids accidental image changes ) "
+                If e.InTab.Image Is Nothing Then
+                    Dim clipImage As Image = Clipboard.GetImage()
+                    Dim clickedCategory As EntryCollection = Categories.Item(Trim(e.InTab.Text))
+                    clickedCategory.TabImageString = ImageToBase64(clipImage)
+                    e.InTab.Image = clickedCategory.TabImage
+                    Categories.Save()
+                End If
+#End Region
 
             Else
-                e.InTab.Image = Nothing
-                Dim clickedCategory As EntryCollection = Categories.Item(Trim(e.InTab.Text))
-                clickedCategory.TabImageString = Nothing
-                Categories.Save()
+#Region " Remove Tab Image - Change only if user clicked image bounds and nothing on clipboard. Drag tab by grabbing text bounds ( avoids accidental image removal ) "
+                If e.InZone = Tabs.Zone.Image Then
+                    e.InTab.Image = Nothing
+                    Dim clickedCategory As EntryCollection = Categories.Item(Trim(e.InTab.Text))
+                    clickedCategory.TabImageString = Nothing
+                    Categories.Save()
+                End If
+#End Region
 
             End If
-
         End If
 
     End Sub
+    Private Sub TabControl_IndexingChanged(sender As Object, e As TabsEventArgs) Handles TypeTabs.TabDragDrop
+
+        Dim tabIndexes As New List(Of String)(From t In TypeTabs.Pages Order By t.Index Select Trim(t.ItemText))
+        For Each category In Categories
+            category.Index = tabIndexes.IndexOf(category.Name)
+        Next
+        Categories.Sort(Function(f1, f2)
+                            Dim Level1 = f1.Index.CompareTo(f2.Index)
+                            If Level1 <> 0 Then
+                                Return Level1
+                            Else
+                                Dim Level2 = String.Compare(f1.Name, f2.Name, StringComparison.Ordinal)
+                                Return Level2
+                            End If
+                        End Function)
+        Categories.Save()
+
+    End Sub
+
     Private Sub NewTabImage_Click() Handles CategoryPicture.Click
 
         If Clipboard.ContainsImage Then
@@ -182,14 +210,23 @@ Public Class CategoryCollection
             pmString = .encryptedValues
         End With
         Dim collectionTypes As New List(Of String)(Split(pmString, "╬"))
-        collectionTypes.Sort()
+        collectionTypes.Sort(Function(f1, f2)
+                                 Dim Level1 = String.Compare(Split(f1, "₪")(1).ToUpperInvariant, Split(f2, "₪")(1).ToUpperInvariant, StringComparison.Ordinal)
+                                 If Level1 <> 0 Then
+                                     Return Level1
+                                 Else
+                                     Dim Level2 = String.Compare(Split(f1, "₪")(0).ToUpperInvariant, Split(f2, "₪")(0).ToUpperInvariant, StringComparison.Ordinal)
+                                     Return Level2
+                                 End If
+                             End Function)
 
         For Each collectionType In collectionTypes
             Dim typeElements As New List(Of String)(Split(collectionType, "╠"))
             Dim typeNameImage As String = typeElements.First
-            Dim elementsNameImage As String() = Split(typeNameImage, "₪")
-            Dim typeName As String = elementsNameImage.First
-            Dim typeImage As String = If(elementsNameImage.Length = 2, elementsNameImage.Last, String.Empty)
+            Dim elements_Name_Index_Image As String() = Split(typeNameImage, "₪")
+            Dim typeName As String = elements_Name_Index_Image.First
+            Dim typeIndex As Integer = Integer.Parse(elements_Name_Index_Image(1), Globalization.NumberStyles.Integer, InvariantCulture)
+            Dim typeImage As String = elements_Name_Index_Image.Last
             Dim typeString As String = typeElements.Last
             Dim newCollectionType As New EntryCollection(typeName) With {.TabImageString = typeImage}
             Dim entryList As New List(Of String)(Split(typeString, "●"))
@@ -273,6 +310,7 @@ Public Class CategoryCollection
         End With
 
     End Sub
+
     Public Overrides Function ToString() As String
         Return Microsoft.VisualBasic.Join((From ec As EntryCollection In Me Select ec.ToString & String.Empty).ToArray, "╬")
     End Function
@@ -296,6 +334,7 @@ Public Class EntryCollection
             Return Parent_
         End Get
     End Property
+    Private WithEvents AddTimer As New Timer With {.Interval = 500}
     Friend ReadOnly Panel As New TableLayoutPanel With {.RowCount = 1,
     .ColumnCount = 1,
     .BorderStyle = BorderStyle.FixedSingle,
@@ -354,6 +393,7 @@ Public Class EntryCollection
             Return If(TabImageString.Any, ResizeImage(Base64ToImage(TabImageString), 20, 20), Nothing)
         End Get
     End Property
+    Friend Property Index As Integer
 
     Public Sub New(collectionName As String)
 
@@ -365,7 +405,7 @@ Public Class EntryCollection
             SubmitButton.Font = buttonFont
             addWidth = 16 + TextRenderer.MeasureText(AddButton.Text, buttonFont).Width
         End Using
-        Panel.ColumnStyles.Add(New ColumnStyle With {.SizeType = SizeType.Absolute, .Width = WorkingArea.Width - 70})
+        Panel.ColumnStyles.Add(New ColumnStyle With {.SizeType = SizeType.Absolute, .Width = TabControl.Pages.First.ClientRectangle.Width - (6 * 2)})
         Panel.RowStyles.Add(New RowStyle With {.SizeType = SizeType.Absolute, .Height = 36})
         Dim tlpAddSubmit As New TableLayoutPanel With {.RowCount = 1, .ColumnCount = 2, .Dock = DockStyle.Fill}
         With tlpAddSubmit
@@ -396,6 +436,8 @@ Public Class EntryCollection
     End Function
     Public Shadows Function Add(Name As String, backImage As Image, backImageString As String, Nickname As String, Address As String, UserID As String, UserPWD As String) As Entry
 
+        AddTimer.Start()
+
         If Contains(Name, UserID) Then
             Return Nothing
         Else
@@ -406,7 +448,11 @@ Public Class EntryCollection
                 .ButtonImage.BackgroundImage = backImage
                 .ComboNickName.Text = Nickname
                 .ComboURL.Text = Address
-                .ComboURL.Image = If(backImageString = Form1.NoImageString, Nothing, ResizeImage(backImage, 24, 24))
+                If IsFile(Address) Then
+                    .ComboURL.Image = ExtensionToImage(Address)
+                Else
+                    .ComboURL.Image = If(backImageString = Form1.NoImageString, Nothing, ResizeImage(backImage, 24, 24))
+                End If
                 .ComboUID.Text = UserID
                 .ComboPWD.Text = UserPWD
                 .ComboName.Name = Name
@@ -415,6 +461,7 @@ Public Class EntryCollection
                 .ComboURL.Name = Address
                 .ComboUID.Name = UserID
                 .ComboPWD.Name = UserPWD
+                .ComboURL.Tag = True
                 .Parent_ = Me
                 .ChangeName(Name)
                 AddHandler .ButtonRemove.Click, AddressOf Entry_Remove
@@ -454,6 +501,15 @@ Public Class EntryCollection
     Private Sub Element_Changed(sender As Object, e As EventArgs)
 
         SubmitButton.BackgroundImage = If(Combonames = Combotexts, My.Resources.Button_Light, My.Resources.Button_Bright)
+        If sender.GetType Is GetType(ImageCombo) Then
+            With DirectCast(sender, ImageCombo)
+                If .Tag IsNot Nothing Then 'ComboURL.Tag was set to True to single out
+                    If IsFile(.Text) Then
+                        .Image = ExtensionToImage(.Text)
+                    End If
+                End If
+            End With
+        End If
 
     End Sub
     Private Sub Changes_Submitted(sender As Object, e As EventArgs) Handles SubmitButton.Click
@@ -488,7 +544,11 @@ Public Class EntryCollection
     End Sub
     Private Sub URL_ImageClicked(sender As Object, e As ImageComboEventArgs)
         With DirectCast(sender, ImageCombo)
-            Process.Start("chrome.exe", .Text)
+            If IsFile(.Text) Then
+                Process.Start(.Text)
+            Else
+                Process.Start("chrome.exe", .Text)
+            End If
         End With
     End Sub
 
@@ -542,8 +602,35 @@ Public Class EntryCollection
         MH.Unsubscribe()
 
     End Sub
+    Private Sub AddTimer_Tick() Handles AddTimer.Tick
+
+        AddTimer.Stop()
+        Dim kvp As New Dictionary(Of String, List(Of Integer)) From {
+        {"Name", New List(Of Integer)},
+        {"Nickname", New List(Of Integer)},
+        {"UID", New List(Of Integer)},
+        {"PWD", New List(Of Integer)}
+        }
+        For Each entry In Me
+            '24 + TextWidth since should be Text.Width + X.Width so text is visible
+            kvp("Name").Add({TextRenderer.MeasureText(entry.ComboName.Text, entry.ComboName.Font).Width, TextRenderer.MeasureText(entry.ComboName.HintText, entry.ComboName.Font).Width}.Max)
+            kvp("Nickname").Add({TextRenderer.MeasureText(entry.ComboNickName.Text, entry.ComboNickName.Font).Width, TextRenderer.MeasureText(entry.ComboNickName.HintText, entry.ComboNickName.Font).Width}.Max)
+            kvp("UID").Add({TextRenderer.MeasureText(entry.ComboUID.Text, entry.ComboUID.Font).Width, TextRenderer.MeasureText(entry.ComboUID.HintText, entry.ComboUID.Font).Width}.Max)
+            kvp("PWD").Add({TextRenderer.MeasureText(entry.ComboPWD.Text, entry.ComboPWD.Font).Width, TextRenderer.MeasureText(entry.ComboPWD.HintText, entry.ComboPWD.Font).Width}.Max)
+        Next
+        For Each entry In Me
+            With entry.Panel.ColumnStyles
+                .Item(2).Width = 18 + kvp("Name").Max
+                .Item(3).Width = 18 + kvp("Nickname").Max
+                .Item(5).Width = 18 + kvp("UID").Max
+                .Item(6).Width = 18 + kvp("PWD").Max
+            End With
+        Next
+
+    End Sub
+
     Public Overrides Function ToString() As String
-        Return Microsoft.VisualBasic.Join({Microsoft.VisualBasic.Join({Name, TabImageString}, "₪"), Microsoft.VisualBasic.Join((From entry In Me Select entry.ToString & String.Empty).ToArray, "●")}, "╠")
+        Return Microsoft.VisualBasic.Join({Microsoft.VisualBasic.Join({Name, Index, TabImageString}, "₪"), Microsoft.VisualBasic.Join((From entry In Me Select entry.ToString & String.Empty).ToArray, "●")}, "╠")
     End Function
 End Class
 
@@ -561,7 +648,8 @@ Public Class Entry
         .Size = New Size(WorkingArea.Width, 32),
         .BorderStyle = BorderStyle.Fixed3D,
         .CellBorderStyle = TableLayoutPanelCellBorderStyle.Inset,
-        .Margin = New Padding(0)}
+        .Margin = New Padding(0),
+        .Dock = DockStyle.Fill}
     Friend WithEvents ButtonRemove As New Button With {.Dock = DockStyle.Fill,
         .Margin = New Padding(0),
         .FlatStyle = FlatStyle.Flat,
@@ -587,7 +675,7 @@ Public Class Entry
         .HintText = "Nickname"}
     Friend ReadOnly ComboURL As New ImageCombo With {.Dock = DockStyle.Fill,
         .Margin = New Padding(0),
-        .HintText = "URL"}
+        .HintText = "URL Or Filepath"}
     Friend ReadOnly ComboUID As New ImageCombo With {.Dock = DockStyle.Fill,
         .Margin = New Padding(0),
         .HintText = "User ID"}
@@ -604,25 +692,26 @@ Public Class Entry
             ComboUID.Font = comboFont
             ComboPWD.Font = comboFont
         End Using
+
         Dim xButtonWidth As Integer = 40
         Dim remainingWidth As Integer = Panel.Width - xButtonWidth
-        Dim namesWidth As Integer = CInt(remainingWidth * 0.12)
+        Dim namesWidth As Integer = CInt(remainingWidth * 0.11)
         Panel.ColumnStyles.Add(New ColumnStyle With {.SizeType = SizeType.Absolute,
-                               .Width = xButtonWidth})
+                               .Width = xButtonWidth}) 'X Remove Button
         Panel.ColumnStyles.Add(New ColumnStyle With {.SizeType = SizeType.Absolute,
-                               .Width = xButtonWidth})
+                               .Width = xButtonWidth}) 'Image
         Panel.ColumnStyles.Add(New ColumnStyle With {.SizeType = SizeType.Absolute,
-                               .Width = namesWidth}) '15
+                               .Width = namesWidth}) 'Name
         Panel.ColumnStyles.Add(New ColumnStyle With {.SizeType = SizeType.Absolute,
-                               .Width = namesWidth}) '15=30
+                               .Width = namesWidth}) 'Nickname
+        Panel.ColumnStyles.Add(New ColumnStyle With {.SizeType = SizeType.Percent,
+                               .Width = 100}) 'URL
         Panel.ColumnStyles.Add(New ColumnStyle With {.SizeType = SizeType.Absolute,
-                               .Width = namesWidth * 2}) '30=60
+                               .Width = namesWidth}) 'UserID
         Panel.ColumnStyles.Add(New ColumnStyle With {.SizeType = SizeType.Absolute,
-                               .Width = namesWidth}) '15=75
+                               .Width = namesWidth}) 'PWD
         Panel.ColumnStyles.Add(New ColumnStyle With {.SizeType = SizeType.Absolute,
-                               .Width = namesWidth}) '15=90
-        Panel.ColumnStyles.Add(New ColumnStyle With {.SizeType = SizeType.Absolute,
-                               .Width = 32})
+                               .Width = 32}) '? View Questions Button
         Panel.RowStyles.Add(New RowStyle With {.SizeType = SizeType.Absolute,
                                .Height = Panel.Height})
         Panel.Controls.Add(ButtonRemove, 0, 0)
