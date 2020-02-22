@@ -320,6 +320,7 @@ Public Class EntryCollection
     Private WithEvents BaseForm As Form = Form1
     Private WithEvents TabControl As Tabs = Form1.TypeTabs
     Friend ReadOnly MH As New SurroundingClass
+    Private Const RowHeight As Integer = 42
 
     Public Enum Type
         Other
@@ -441,7 +442,7 @@ Public Class EntryCollection
         If Contains(Name, UserID) Then
             Return Nothing
         Else
-            Panel.RowStyles.Add(New RowStyle With {.SizeType = SizeType.Absolute, .Height = 48})
+            Panel.RowStyles.Add(New RowStyle With {.SizeType = SizeType.Absolute, .Height = RowHeight})
             Dim newEntry As New Entry()
             With newEntry
                 .ComboName.Text = Name
@@ -612,18 +613,21 @@ Public Class EntryCollection
         {"PWD", New List(Of Integer)}
         }
         For Each entry In Me
-            '24 + TextWidth since should be Text.Width + X.Width so text is visible
             kvp("Name").Add({TextRenderer.MeasureText(entry.ComboName.Text, entry.ComboName.Font).Width, TextRenderer.MeasureText(entry.ComboName.HintText, entry.ComboName.Font).Width}.Max)
             kvp("Nickname").Add({TextRenderer.MeasureText(entry.ComboNickName.Text, entry.ComboNickName.Font).Width, TextRenderer.MeasureText(entry.ComboNickName.HintText, entry.ComboNickName.Font).Width}.Max)
             kvp("UID").Add({TextRenderer.MeasureText(entry.ComboUID.Text, entry.ComboUID.Font).Width, TextRenderer.MeasureText(entry.ComboUID.HintText, entry.ComboUID.Font).Width}.Max)
             kvp("PWD").Add({TextRenderer.MeasureText(entry.ComboPWD.Text, entry.ComboPWD.Font).Width, TextRenderer.MeasureText(entry.ComboPWD.HintText, entry.ComboPWD.Font).Width}.Max)
         Next
         For Each entry In Me
+            entry.Panel.RowStyles(0).Height = RowHeight
             With entry.Panel.ColumnStyles
+                .Item(0).Width = RowHeight 'X
+                .Item(1).Width = RowHeight 'Image
                 .Item(2).Width = 18 + kvp("Name").Max
                 .Item(3).Width = 18 + kvp("Nickname").Max
                 .Item(5).Width = 18 + kvp("UID").Max
                 .Item(6).Width = 18 + kvp("PWD").Max
+                .Item(7).Width = RowHeight '?
             End With
         Next
 
@@ -765,7 +769,7 @@ End Class
 
 Public Class QuestionCollection
     Inherits List(Of QA)
-    Private Const RowHeight As Integer = 40
+    Private Const RowHeight As Integer = 36
     Friend ReadOnly Property Parent As Entry
     Friend ReadOnly Panel As New TableLayoutPanel With {.RowCount = 1,
         .ColumnCount = 1,
