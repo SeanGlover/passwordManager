@@ -212,10 +212,13 @@ Public Class CategoryCollection
 
         Dim pmString As String
         With My.Settings
-            '.encryptedValues = "Banking╠BMO0§§bmo.com§abc§def►What is my favorite color0§Blue■What is my favorite color1§Blue■What is my favorite color2§Blue■What is my favorite color3§Blue■What is my favorite color4§Blue■What is my favorite color5§Blue●BMO1§§bmo.com§abc§def►What is my favorite color0§Blue■What is my favorite color1§Blue■What is my favorite color2§Blue■What is my favorite color3§Blue■What is my favorite color4§Blue■What is my favorite color5§Blue●BMO2§§bmo.com§abc§def►What is my favorite color0§Blue■What is my favorite color1§Blue■What is my favorite color2§Blue■What is my favorite color3§Blue■What is my favorite color4§Blue■What is my favorite color5§Blue●BMO3§§bmo.com§abc§def►What is my favorite color0§Blue■What is my favorite color1§Blue■What is my favorite color2§Blue■What is my favorite color3§Blue■What is my favorite color4§Blue■What is my favorite color5§Blue●BMO4§§bmo.com§abc§def►What is my favorite color0§Blue■What is my favorite color1§Blue■What is my favorite color2§Blue■What is my favorite color3§Blue■What is my favorite color4§Blue■What is my favorite color5§Blue●BMO5§§bmo.com§abc§def►What is my favorite color0§Blue■What is my favorite color1§Blue■What is my favorite color2§Blue■What is my favorite color3§Blue■What is my favorite color4§Blue■What is my favorite color5§Blue╬Work╠CCS0§§bmo.com§abc§def►What is my name0§Sean■What is my name1§Sean■What is my name2§Sean■What is my name3§Sean■What is my name4§Sean■What is my name5§Sean●CCS1§§bmo.com§abc§def►What is my name0§Sean■What is my name1§Sean■What is my name2§Sean■What is my name3§Sean■What is my name4§Sean■What is my name5§Sean●CCS2§§bmo.com§abc§def►What is my name0§Sean■What is my name1§Sean■What is my name2§Sean■What is my name3§Sean■What is my name4§Sean■What is my name5§Sean●CCS3§§bmo.com§abc§def►What is my name0§Sean■What is my name1§Sean■What is my name2§Sean■What is my name3§Sean■What is my name4§Sean■What is my name5§Sean●CCS4§§bmo.com§abc§def►What is my name0§Sean■What is my name1§Sean■What is my name2§Sean■What is my name3§Sean■What is my name4§Sean■What is my name5§Sean●CCS5§§bmo.com§abc§def►What is my name0§Sean■What is my name1§Sean■What is my name2§Sean■What is my name3§Sean■What is my name4§Sean■What is my name5§Sean"
-            '.Save()
-            pmString = .encryptedValues
+            Using sr As New IO.StreamReader(Desktop & "\pm.txt")
+                pmString = sr.ReadToEnd
+            End Using
+            .encryptedValues = pmString
+            .Save()
         End With
+
         Dim collectionTypes As New List(Of String)(From ct In Split(pmString, "╬") Where ct.Any)
         collectionTypes.Sort(Function(f1, f2)
                                  Dim Level1 = String.Compare(Split(f1, "₪")(1).ToUpperInvariant, Split(f2, "₪")(1).ToUpperInvariant, StringComparison.Ordinal)
