@@ -34,7 +34,6 @@ Public Class Form1
         .BackgroundImageLayout = ImageLayout.Center,
         .ShowInTaskbar = False
         }
-    Private ReadOnly ControlsImages As New Dictionary(Of String, Image)(MyImages(Nothing))
     Friend ReadOnly NoImageString As String = ImageToBase64(My.Resources.NoImage)
     Private Categories As CategoryCollection
 
@@ -69,6 +68,14 @@ Public Class Form1
             .Visible = False
         End With
 
+    End Sub
+    Private Sub Form1_Closing() Handles Me.Closing
+        TypeTabs.Dispose()
+        TLP_AddTab.Dispose()
+        CategoryPicture.Dispose()
+        CategoryCombo.Dispose()
+        PanelCategories.Dispose()
+        InvisibleForm.Dispose()
     End Sub
 
     Private Sub TabControl_AddTabClicked(sender As Object, e As TabsEventArgs) Handles TypeTabs.TabClicked
@@ -209,7 +216,7 @@ Public Class CategoryCollection
             '.Save()
             pmString = .encryptedValues
         End With
-        Dim collectionTypes As New List(Of String)(Split(pmString, "╬"))
+        Dim collectionTypes As New List(Of String)(From ct In Split(pmString, "╬") Where ct.Any)
         collectionTypes.Sort(Function(f1, f2)
                                  Dim Level1 = String.Compare(Split(f1, "₪")(1).ToUpperInvariant, Split(f2, "₪")(1).ToUpperInvariant, StringComparison.Ordinal)
                                  If Level1 <> 0 Then
@@ -249,7 +256,7 @@ Public Class CategoryCollection
                     Dim logo As Image
                     Try
                         logo = Base64ToImage(entryImageString)
-                    Catch ex As Exception
+                    Catch ex As IO.IOException
                         logo = My.Resources.NoImage
                         entryImageString = ImageToBase64(logo)
                     End Try
@@ -571,7 +578,7 @@ Public Class EntryCollection
         End If
 
     End Sub
-    Friend Sub QuestionButton_Clicked(mouseEntry As Entry)
+    Friend Sub QuestionButton_Clicked()
         MH.Subscribe()
     End Sub
     Friend Sub QuestionButton_Leave()
@@ -754,7 +761,7 @@ Public Class Entry
         Parent.QuestionButton_Enter(Me)
     End Sub
     Private Sub Questions_Clicked(sender As Object, e As EventArgs) Handles ButtonQuestions.Click
-        Parent.QuestionButton_Clicked(Me)
+        Parent.QuestionButton_Clicked()
     End Sub
     Private Sub ButtonQuestions_Leave() Handles ButtonQuestions.MouseLeave
         Parent.QuestionButton_Leave()
